@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Laboratorio de Búsqueda No Informada · Taller 2 MIA</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Top Bar Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="badge-tag">
+                    <i class="fa-solid fa-graduation-cap"></i> Maestría en Inteligencia Artificial &bull; Universidad Sergio Arboleda
+                </div>
+                <h1>Simulador de Búsqueda No Informada</h1>
+                <p class="subtitle">Evaluación de Desempeño: <strong>BFS, DFS, IDDFS y UCS</strong> sobre 4 Problemas Clásicos de IA (Tiempo vs Memoria)</p>
+            </div>
+            <div class="author-box">
+                <span class="author-label">Estudiante</span>
+                <span class="author-name">Bryan Orozco</span>
+                <span class="author-sub">Taller 2 &bull; 2026</span>
+            </div>
+        </header>
+
+        <!-- Main Workspace -->
+        <main class="main-layout">
+            <!-- Controls Sidebar -->
+            <aside class="controls-panel">
+                <section class="control-group">
+                    <label class="section-title"><i class="fa-solid fa-cubes"></i> 1. Selecciona el Problema</label>
+                    <div class="problem-buttons">
+                        <button class="prob-btn active" data-problem="puzzle">
+                            <i class="fa-solid fa-puzzle-piece"></i>
+                            <div>
+                                <strong>Puzzle 3×3</strong>
+                                <span>8-Puzzle ortogonal</span>
+                            </div>
+                        </button>
+                        <button class="prob-btn" data-problem="queens">
+                            <i class="fa-solid fa-chess-queen"></i>
+                            <div>
+                                <strong>N-Reinas (N=4)</strong>
+                                <span>Sin ataques mutuos</span>
+                            </div>
+                        </button>
+                        <button class="prob-btn" data-problem="knapsack">
+                            <i class="fa-solid fa-sack-dollar"></i>
+                            <div>
+                                <strong>Mochila 0/1</strong>
+                                <span>Capacidad y valor óptimo</span>
+                            </div>
+                        </button>
+                        <button class="prob-btn" data-problem="tsp">
+                            <i class="fa-solid fa-route"></i>
+                            <div>
+                                <strong>Agente Viajero (TSP)</strong>
+                                <span>Bogotá &rarr; La Patagonia</span>
+                            </div>
+                        </button>
+                    </div>
+                </section>
+
+                <section class="control-group">
+                    <label class="section-title"><i class="fa-solid fa-brain"></i> 2. Algoritmo de Búsqueda</label>
+                    <div class="algo-buttons">
+                        <button class="algo-btn active" data-algo="BFS">
+                            <span class="algo-pill bfs-pill">FIFO</span>
+                            <strong>BFS</strong>
+                        </button>
+                        <button class="algo-btn" data-algo="DFS">
+                            <span class="algo-pill dfs-pill">LIFO</span>
+                            <strong>DFS</strong>
+                        </button>
+                        <button class="algo-btn" data-algo="IDDFS">
+                            <span class="algo-pill iddfs-pill">Iterativo</span>
+                            <strong>IDDFS</strong>
+                        </button>
+                        <button class="algo-btn" data-algo="UCS">
+                            <span class="algo-pill ucs-pill">Dijkstra</span>
+                            <strong>UCS</strong>
+                        </button>
+                    </div>
+                    <button class="run-all-btn" id="btnRunAll">
+                        <i class="fa-solid fa-bolt"></i> Ejecutar y Comparar los 4
+                    </button>
+                </section>
+
+                <!-- Information Card -->
+                <div class="info-callout" id="problemInfo">
+                    <!-- Dynamic problem info rendered by JS -->
+                </div>
+            </aside>
+
+            <!-- Visualizer and Metrics Area -->
+            <section class="visualizer-area">
+                <!-- Visual Display Box -->
+                <div class="display-card">
+                    <div class="display-header">
+                        <div class="display-title-group">
+                            <h2 id="activeProblemTitle">Puzzle 3×3 (8-Puzzle)</h2>
+                            <span class="active-algo-badge" id="activeAlgoBadge">Algoritmo: BFS</span>
+                        </div>
+                        <div class="step-controls">
+                            <button id="btnStepPrev" class="step-btn"><i class="fa-solid fa-backward-step"></i> Anterior</button>
+                            <span class="step-indicator" id="stepIndicator">Paso 0 / 0</span>
+                            <button id="btnStepNext" class="step-btn">Siguiente <i class="fa-solid fa-forward-step"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Visual Canvas -->
+                    <div class="canvas-wrapper" id="canvasWrapper">
+                        <!-- Rendered by app.js: Board, Chessboard, Backpack, or Graph -->
+                    </div>
+                </div>
+
+                <!-- Performance Metrics Cards -->
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-icon" style="color: #38bdf8;"><i class="fa-solid fa-stopwatch"></i></div>
+                        <div class="metric-body">
+                            <span class="metric-label">Tiempo de CPU</span>
+                            <span class="metric-val" id="metricTime">0.087 ms</span>
+                            <span class="metric-hint">time.perf_counter()</span>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-icon" style="color: #34d399;"><i class="fa-solid fa-memory"></i></div>
+                        <div class="metric-body">
+                            <span class="metric-label">Memoria RAM Pico</span>
+                            <span class="metric-val" id="metricMemory">7.34 KB</span>
+                            <span class="metric-hint">tracemalloc</span>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-icon" style="color: #fbbf24;"><i class="fa-solid fa-diagram-project"></i></div>
+                        <div class="metric-body">
+                            <span class="metric-label">Nodos Expandidos</span>
+                            <span class="metric-val" id="metricNodes">8</span>
+                            <span class="metric-hint">Frontera procesada</span>
+                        </div>
+                    </div>
+
+                    <div class="metric-card">
+                        <div class="metric-icon" style="color: #f472b6;"><i class="fa-solid fa-award"></i></div>
+                        <div class="metric-body">
+                            <span class="metric-label">Costo de la Ruta</span>
+                            <span class="metric-val" id="metricCost">3.0</span>
+                            <span class="metric-hint">g(n) óptimo acumulado</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Comparison Table -->
+                <div class="table-card">
+                    <div class="table-header">
+                        <h3><i class="fa-solid fa-chart-simple"></i> Tabla Comparativa del Problema Actual</h3>
+                        <span class="table-sub">Resultados experimentales directos de benchmark.py</span>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="benchmark-table" id="benchmarkTable">
+                            <thead>
+                                <tr>
+                                    <th>Algoritmo</th>
+                                    <th>Éxito</th>
+                                    <th>Pasos</th>
+                                    <th>Costo g(n)</th>
+                                    <th>Nodos Exp.</th>
+                                    <th>Tiempo (ms)</th>
+                                    <th>Memoria (KB)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="benchmarkTableBody">
+                                <!-- Populated dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
