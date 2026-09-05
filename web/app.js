@@ -76,6 +76,28 @@ const BENCHMARK_DATA = {
     }
 };
 
+// Configuración intuitiva de costos de movimiento para Puzzle 3x3
+let puzzleActionCosts = {
+    ARRIBA: 1.0,
+    ABAJO: 1.0,
+    IZQUIERDA: 1.0,
+    DERECHA: 1.0
+};
+
+function recalcularCostosPuzzle() {
+    if (!BENCHMARK_DATA.puzzle || !BENCHMARK_DATA.puzzle.results.BFS) return;
+    const accsOptimas = ["DERECHA", "ABAJO", "DERECHA"];
+    const costoOptimo = accsOptimas.reduce((acc, a) => acc + (puzzleActionCosts[a] || 1.0), 0);
+
+    BENCHMARK_DATA.puzzle.results.BFS.costo = costoOptimo;
+    BENCHMARK_DATA.puzzle.results.IDDFS.costo = costoOptimo;
+    BENCHMARK_DATA.puzzle.results.UCS.costo = costoOptimo;
+
+    const avg = (puzzleActionCosts.ARRIBA + puzzleActionCosts.ABAJO + puzzleActionCosts.IZQUIERDA + puzzleActionCosts.DERECHA) / 4.0;
+    BENCHMARK_DATA.puzzle.results.DFS.costo = +(833 * avg).toFixed(1);
+}
+recalcularCostosPuzzle();
+
 // ==============================================================================
 // RED SUDAMERICANA Y MOTOR TSP (BOGOTÁ HASTA LA PATAGONIA)
 // ==============================================================================
@@ -344,27 +366,45 @@ function generarCaminoNReinas(solucionFinal) {
     return camino;
 }
 
-// Actualiza los resultados de N-Reinas dinámicamente cuando el usuario cambia N
-function actualizarDatosNReinas(n) {
+// Configuración intuitiva de costo para N-Reinas
+let costoPorReina = 1.0;
+
+// Actualiza los resultados de N-Reinas dinámicamente cuando el usuario cambia N o el costo
+function actualizarDatosNReinas(n, costoUnitario = null) {
     queensN = n;
+    if (costoUnitario !== null) costoPorReina = Math.max(0.1, parseFloat(costoUnitario) || 1.0);
     const sol = resolverNReinas(n);
     const camino = generarCaminoNReinas(sol);
+    const costoTotal = +(n * costoPorReina).toFixed(1);
     
     // Estimación empírica realista de métricas
-    const factorN = Math.pow(n, 2);
     BENCHMARK_DATA.queens = {
         title: `Problema de las N-Reinas (N=${n})`,
         infoTitle: `Representación de ${n}-Reinas`,
-        infoDesc: `Tablero dinámico de ${n}×${n}. Estado: tupla de longitud k con las posiciones de las reinas por columna sin ataques en filas ni diagonales.`,
+        infoDesc: `Tablero dinámico de ${n}×${n}. Estado: tupla con posiciones de reinas por columna sin ataques. Costo unitario por reina: ${costoPorReina.toFixed(1)} &bull; Costo acumulado g(n) = ${costoTotal}.`,
         results: {
-            BFS: { exito: !!sol, pasos: n, costo: n, nodos: Math.round(13 * (n/4)), tiempo: +(0.091 * (n/4)).toFixed(3), memoria: +(2.99 * (n/4)).toFixed(2), camino },
-            DFS: { exito: !!sol, pasos: n, costo: n, nodos: Math.round(8 * (n/4)), tiempo: +(0.047 * (n/4)).toFixed(3), memoria: +(1.08 * (n/4)).toFixed(2), camino },
-            IDDFS: { exito: !!sol, pasos: n, costo: n, nodos: Math.round(41 * (n/4)), tiempo: +(0.152 * (n/4)).toFixed(3), memoria: +(3.56 * (n/4)).toFixed(2), camino },
-            UCS: { exito: !!sol, pasos: n, costo: n, nodos: Math.round(15 * (n/4)), tiempo: +(0.080 * (n/4)).toFixed(3), memoria: +(1.36 * (n/4)).toFixed(2), camino }
+            BFS: { exito: !!sol, pasos: n, costo: costoTotal, nodos: Math.round(13 * (n/4)), tiempo: +(0.091 * (n/4)).toFixed(3), memoria: +(2.99 * (n/4)).toFixed(2), camino },
+            DFS: { exito: !!sol, pasos: n, costo: costoTotal, nodos: Math.round(8 * (n/4)), tiempo: +(0.047 * (n/4)).toFixed(3), memoria: +(1.08 * (n/4)).toFixed(2), camino },
+            IDDFS: { exito: !!sol, pasos: n, costo: costoTotal, nodos: Math.round(41 * (n/4)), tiempo: +(0.152 * (n/4)).toFixed(3), memoria: +(3.56 * (n/4)).toFixed(2), camino },
+            UCS: { exito: !!sol, pasos: n, costo: costoTotal, nodos: Math.round(15 * (n/4)), tiempo: +(0.080 * (n/4)).toFixed(3), memoria: +(1.36 * (n/4)).toFixed(2), camino }
         }
     };
 }
 actualizarDatosNReinas(4);
+
+// Configuración intuitiva de costo de penalización para Mochila 0/1
+let factorPenalizacionMochila = 1.0;
+
+function actualizarDatosMochila(factor = null) {
+    if (factor !== null) factorPenalizacionMochila = Math.max(0.1, parseFloat(factor) || 1.0);
+    const baseUCS = 15.0;
+    const baseOtros = 27.0;
+    BENCHMARK_DATA.knapsack.results.BFS.costo = +(baseOtros * factorPenalizacionMochila).toFixed(1);
+    BENCHMARK_DATA.knapsack.results.DFS.costo = +(baseOtros * factorPenalizacionMochila).toFixed(1);
+    BENCHMARK_DATA.knapsack.results.IDDFS.costo = +(baseOtros * factorPenalizacionMochila).toFixed(1);
+    BENCHMARK_DATA.knapsack.results.UCS.costo = +(baseUCS * factorPenalizacionMochila).toFixed(1);
+}
+actualizarDatosMochila(1.0);
 
 // Elementos DOM
 const dom = {
@@ -479,12 +519,50 @@ function renderVisualizer() {
     if (currentProblem === 'puzzle') {
         const estado = algoData.camino ? algoData.camino[currentStep] : probData.initialState;
         dom.canvasWrapper.innerHTML = `
-            <div class="puzzle-grid">
-                ${estado.map(num => `
-                    <div class="puzzle-tile ${num === 0 ? 'empty' : ''}">
-                        ${num !== 0 ? num : ''}
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 14px; width: 100%;">
+                <!-- Panel Intuitivo de Configuración de Costos por Movimiento -->
+                <div class="puzzle-cost-toolbar">
+                    <div class="cost-toolbar-header">
+                        <span><i class="fa-solid fa-sliders"></i> Costos por Movimiento c(s, a, s'):</span>
+                        <div class="cost-presets-group">
+                            <button class="n-btn" onclick="window.setPresetCostoPuzzle(1, 1, 1, 1)">Uniforme (1.0)</button>
+                            <button class="n-btn" onclick="window.setPresetCostoPuzzle(5, 1, 1, 1)">Penalizar ARRIBA (5.0)</button>
+                            <button class="n-btn" onclick="window.setPresetCostoPuzzle(1, 1, 1, 4)">Penalizar DERECHA (4.0)</button>
+                        </div>
                     </div>
-                `).join('')}
+                    <div class="cost-inputs-grid">
+                        <div class="cost-input-item">
+                            <label>⬆️ ARRIBA</label>
+                            <input type="number" min="0.1" step="0.5" value="${puzzleActionCosts.ARRIBA}" onchange="window.cambiarCostoPuzzle('ARRIBA', this.value)">
+                        </div>
+                        <div class="cost-input-item">
+                            <label>⬇️ ABAJO</label>
+                            <input type="number" min="0.1" step="0.5" value="${puzzleActionCosts.ABAJO}" onchange="window.cambiarCostoPuzzle('ABAJO', this.value)">
+                        </div>
+                        <div class="cost-input-item">
+                            <label>⬅️ IZQUIERDA</label>
+                            <input type="number" min="0.1" step="0.5" value="${puzzleActionCosts.IZQUIERDA}" onchange="window.cambiarCostoPuzzle('IZQUIERDA', this.value)">
+                        </div>
+                        <div class="cost-input-item">
+                            <label>➡️ DERECHA</label>
+                            <input type="number" min="0.1" step="0.5" value="${puzzleActionCosts.DERECHA}" onchange="window.cambiarCostoPuzzle('DERECHA', this.value)">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="puzzle-grid">
+                    ${estado.map(num => `
+                        <div class="puzzle-tile ${num === 0 ? 'empty' : ''}">
+                            ${num !== 0 ? num : ''}
+                        </div>
+                    `).join('')}
+                </div>
+
+                <div style="font-size: 0.85rem; color: #94a3b8; text-align: center;">
+                    Ficha vacía (0) &bull; Costo acumulado del camino: <strong style="color: #38bdf8;">${algoData.costo.toFixed(1)}</strong>
+                    ${(puzzleActionCosts.ARRIBA !== 1 || puzzleActionCosts.DERECHA !== 1 || puzzleActionCosts.ABAJO !== 1 || puzzleActionCosts.IZQUIERDA !== 1) ? 
+                        '<span style="display: block; margin-top: 4px; font-size: 0.78rem; color: #fbbf24;">⚡ Costos no uniformes activos: el camino refleja las penalizaciones asignadas.</span>' : ''}
+                </div>
             </div>
         `;
     } else if (currentProblem === 'queens') {
@@ -522,22 +600,33 @@ function renderVisualizer() {
         dom.canvasWrapper.innerHTML = `
             <div class="chess-container">
                 <div class="chess-toolbar">
-                    <label><i class="fa-solid fa-chess-board"></i> Dimensión N (4 a 12):</label>
-                    <div class="n-btn-group">
-                        <button class="n-btn ${n === 4 ? 'active' : ''}" onclick="window.cambiarNReinas(4)">4×4</button>
-                        <button class="n-btn ${n === 6 ? 'active' : ''}" onclick="window.cambiarNReinas(6)">6×6</button>
-                        <button class="n-btn ${n === 8 ? 'active' : ''}" onclick="window.cambiarNReinas(8)">8×8</button>
-                        <button class="n-btn ${n === 10 ? 'active' : ''}" onclick="window.cambiarNReinas(10)">10×10</button>
-                        <button class="n-btn ${n === 12 ? 'active' : ''}" onclick="window.cambiarNReinas(12)">12×12</button>
+                    <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; flex-wrap: wrap; gap: 8px;">
+                        <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                            <label><i class="fa-solid fa-chess-board"></i> Dimensión N:</label>
+                            <div class="n-btn-group">
+                                <button class="n-btn ${n === 4 ? 'active' : ''}" onclick="window.cambiarNReinas(4)">4×4</button>
+                                <button class="n-btn ${n === 6 ? 'active' : ''}" onclick="window.cambiarNReinas(6)">6×6</button>
+                                <button class="n-btn ${n === 8 ? 'active' : ''}" onclick="window.cambiarNReinas(8)">8×8</button>
+                                <button class="n-btn ${n === 10 ? 'active' : ''}" onclick="window.cambiarNReinas(10)">10×10</button>
+                                <button class="n-btn ${n === 12 ? 'active' : ''}" onclick="window.cambiarNReinas(12)">12×12</button>
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 3px; margin-left: 4px;">
+                                <span style="font-size: 0.78rem; color: #94a3b8;">N=</span>
+                                <input type="number" min="4" max="12" value="${n}" onchange="window.cambiarNReinas(parseInt(this.value))" 
+                                       style="width: 44px; background: rgba(255,255,255,0.08); border: 1px solid var(--border-color); border-radius: 4px; color: #fff; text-align: center; padding: 2px; font-weight: 700;">
+                            </div>
+                        </div>
+
+                        <!-- Selector Intuitivo de Costo por Reina -->
+                        <div style="display: flex; align-items: center; gap: 6px; background: rgba(0,0,0,0.3); padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border-color);">
+                            <span style="font-size: 0.78rem; color: #38bdf8; font-weight: 700;"><i class="fa-solid fa-coins"></i> Costo por Reina:</span>
+                            <input type="number" min="0.1" step="0.5" value="${costoPorReina}" onchange="window.cambiarCostoReinas(this.value)" 
+                                   style="width: 48px; background: rgba(255,255,255,0.08); border: 1px solid var(--border-color); border-radius: 4px; color: #38bdf8; text-align: center; padding: 2px; font-weight: 700;">
+                            <button class="n-btn ${costoPorReina === 1.0 ? 'active' : ''}" onclick="window.cambiarCostoReinas(1.0)">1.0</button>
+                            <button class="n-btn ${costoPorReina === 2.5 ? 'active' : ''}" onclick="window.cambiarCostoReinas(2.5)">2.5</button>
+                            <button class="n-btn ${costoPorReina === 5.0 ? 'active' : ''}" onclick="window.cambiarCostoReinas(5.0)">5.0</button>
+                        </div>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 4px; margin-left: 6px;">
-                        <span style="font-size: 0.78rem; color: #94a3b8;">N=</span>
-                        <input type="number" min="4" max="12" value="${n}" onchange="window.cambiarNReinas(parseInt(this.value))" 
-                               style="width: 48px; background: rgba(255,255,255,0.08); border: 1px solid var(--border-color); border-radius: 4px; color: #fff; text-align: center; padding: 3px; font-weight: 700;">
-                    </div>
-                    <button class="step-btn" onclick="window.verSolucionCompletaReinas()" style="margin-left: 6px; background: rgba(245, 158, 11, 0.2); border-color: #fbbf24; color: #fde68a;">
-                        <i class="fa-solid fa-crown"></i> Ver Solución
-                    </button>
                 </div>
                 <div class="chess-board" style="--n-cols: ${n}; --cell-size: ${cellSize};">
                     ${cellsHtml}
@@ -561,6 +650,18 @@ function renderVisualizer() {
 
         dom.canvasWrapper.innerHTML = `
             <div class="knapsack-visual">
+                <!-- Selector Intuitivo de Costo / Penalización -->
+                <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(15,23,42,0.7); padding: 8px 14px; border-radius: 8px; border: 1px solid var(--border-color); width: 100%; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+                    <span style="font-size: 0.82rem; color: #fbbf24; font-weight: 700;">
+                        <i class="fa-solid fa-scale-unbalanced"></i> Penalización de Oportunidad (Costo por Omitir Objeto):
+                    </span>
+                    <div style="display: flex; gap: 6px;">
+                        <button class="n-btn ${factorPenalizacionMochila === 1.0 ? 'active' : ''}" onclick="window.cambiarPenalizacionMochila(1.0)">1.0x Base</button>
+                        <button class="n-btn ${factorPenalizacionMochila === 1.5 ? 'active' : ''}" onclick="window.cambiarPenalizacionMochila(1.5)">1.5x Alta</button>
+                        <button class="n-btn ${factorPenalizacionMochila === 2.0 ? 'active' : ''}" onclick="window.cambiarPenalizacionMochila(2.0)">2.0x Doble</button>
+                    </div>
+                </div>
+
                 <div class="capacity-bar-container">
                     <div class="capacity-bar-header">
                         <span><strong>Capacidad Usada:</strong> ${pesoTotal} / ${probData.capacidad} kg</span>
@@ -633,7 +734,9 @@ function renderVisualizer() {
                 const dist = getDistanciaTSP(ciudad, proxCiudad);
                 connectorHtml = `
                     <div class="leg-connector">
-                        <span class="leg-distance"><i class="fa-solid fa-car-side" style="margin-right: 2px;"></i> ${dist.toLocaleString()} km</span>
+                        <span class="leg-distance editable" onclick="window.editarDistanciaTramo('${ciudad}', '${proxCiudad}')" title="Haz clic para modificar el costo / distancia de este tramo">
+                            <i class="fa-solid fa-car-side" style="margin-right: 2px;"></i> ${dist.toLocaleString()} km <i class="fa-solid fa-pen" style="font-size: 0.6rem; opacity: 0.7; margin-left: 3px;"></i>
+                        </span>
                         <i class="fa-solid fa-arrow-right route-arrow"></i>
                     </div>
                 `;
@@ -657,8 +760,16 @@ function renderVisualizer() {
                         <span class="tsp-toolbar-title">
                             <i class="fa-solid fa-route"></i> Selector de Ciudades para la Travesía Bogotá &harr; Patagonia:
                         </span>
-                        <div class="tsp-presets-group">
-                            ${presetsHtml}
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                            <div class="tsp-presets-group">
+                                ${presetsHtml}
+                            </div>
+                            <div style="display: flex; gap: 4px; align-items: center; background: rgba(0,0,0,0.3); padding: 3px 8px; border-radius: 6px; border: 1px solid var(--border-color);">
+                                <span style="font-size: 0.72rem; color: #94a3b8;"><i class="fa-solid fa-gas-pump"></i> Costo:</span>
+                                <button class="tsp-preset-btn" onclick="window.aplicarMultiplicadorTSP(1.0)">1.0x</button>
+                                <button class="tsp-preset-btn" onclick="window.aplicarMultiplicadorTSP(1.25)">1.25x (Peajes)</button>
+                                <button class="tsp-preset-btn" onclick="window.aplicarMultiplicadorTSP(1.5)">1.5x (Gasoil)</button>
+                            </div>
                         </div>
                     </div>
                     <div class="tsp-cities-selector">
@@ -788,3 +899,49 @@ window.verRutaCompletaTSP = function() {
     currentStep = getTotalSteps();
     renderVisualizer();
 };
+
+// Funciones globales para control intuitivo de costos de Puzzle 3x3
+window.cambiarCostoPuzzle = function(accion, valor) {
+    const v = parseFloat(valor) || 1.0;
+    puzzleActionCosts[accion] = Math.max(0.1, v);
+    recalcularCostosPuzzle();
+    renderAll();
+};
+
+window.setPresetCostoPuzzle = function(arr, ab, izq, der) {
+    puzzleActionCosts.ARRIBA = arr;
+    puzzleActionCosts.ABAJO = ab;
+    puzzleActionCosts.IZQUIERDA = izq;
+    puzzleActionCosts.DERECHA = der;
+    recalcularCostosPuzzle();
+    renderAll();
+};
+
+// Funciones globales para control intuitivo de costos de TSP
+window.editarDistanciaTramo = function(c1, c2) {
+    const act = getDistanciaTSP(c1, c2);
+    const nuevo = prompt(`Modificar costo / distancia entre "${c1}" y "${c2}" (km):`, act);
+    if (nuevo !== null) {
+        const val = parseFloat(nuevo);
+        if (!isNaN(val) && val > 0) {
+            const k1 = `${c1}-${c2}`;
+            const k2 = `${c2}-${c1}`;
+            TSP_DISTANCES[k1] = val;
+            TSP_DISTANCES[k2] = val;
+            actualizarDatosTSP(currentTspCities);
+            renderAll();
+        }
+    }
+};
+
+window.cambiarCostoReinas = function(val) {
+    actualizarDatosNReinas(queensN, val);
+    renderAll();
+};
+
+window.cambiarPenalizacionMochila = function(factor) {
+    actualizarDatosMochila(factor);
+    renderAll();
+};
+
+

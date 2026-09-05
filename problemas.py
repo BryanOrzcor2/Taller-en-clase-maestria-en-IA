@@ -33,12 +33,20 @@ class ProblemaPuzzle3x3(ProblemaBusqueda):
         'DERECHA': (0, 1)
     }
 
-    def __init__(self, estado_inicial: Tuple[int, ...] = None, estado_objetivo: Tuple[int, ...] = None):
+    def __init__(self, estado_inicial: Tuple[int, ...] = None, estado_objetivo: Tuple[int, ...] = None, costos_acciones: Dict[str, float] = None):
         if estado_inicial is None:
             # Configuración limpia a 3 pasos de distancia de la meta (1 2 3 / 0 4 6 / 7 5 8)
             estado_inicial = (1, 2, 3, 0, 4, 6, 7, 5, 8)
         super().__init__(estado_inicial)
         self.estado_objetivo = estado_objetivo or self.OBJETIVO_DEFAULT
+        self.costos_acciones = {
+            'ARRIBA': 1.0,
+            'ABAJO': 1.0,
+            'IZQUIERDA': 1.0,
+            'DERECHA': 1.0
+        }
+        if costos_acciones:
+            self.costos_acciones.update(costos_acciones)
 
     def es_objetivo(self, estado: Tuple[int, ...]) -> bool:
         return estado == self.estado_objetivo
@@ -68,7 +76,7 @@ class ProblemaPuzzle3x3(ProblemaBusqueda):
         return tuple(lista)
 
     def costo(self, estado: Any, accion: Any, estado_siguiente: Any) -> float:
-        return 1.0
+        return float(self.costos_acciones.get(accion, 1.0))
 
     @staticmethod
     def formatear(estado: Tuple[int, ...]) -> str:
